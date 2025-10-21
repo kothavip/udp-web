@@ -226,7 +226,7 @@ CONFIG_FILE = "/etc/zivpn/config.json"
 LISTEN_FALLBACK = "5667"
 RECENT_SECONDS = 120
 
-LOGO_URL = "https://raw.githubusercontent.com/Upk123/upkvip-ziscript/refs/heads/main/20251018_231111.png"
+LOGO_URL = "https://raw.githubusercontent.com/kothavip/udp-web/refs/heads/main/1760280233681.jpg"
 
 HTML = """<!doctype html>
 <html lang="my"><head><meta charset="utf-8">
