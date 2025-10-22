@@ -295,7 +295,7 @@ HTML = """<!doctype html>
     <div class="sub">ZIVPN User Panel</div>
   </div>
   <div style="display:flex;gap:8px;align-items:center">
-    <a class="btn" href="https://m.me/upkvpnfastvpn" target="_blank" rel="noopener">💬 Contact (Messenger)</a>
+    <a class="btn" href="https://www.mediafire.com/file/bxx8qnlgjw7j6u4/ZIVPN_V_2.0.3_Mod_by_JORYYUI68.apk/file" target="_blank" rel="noopener">APPလင့်</a>
     <a class="btn" href="/logout">Logout</a>
   </div>
 </header>
