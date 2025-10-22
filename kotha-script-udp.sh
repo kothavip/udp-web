@@ -774,7 +774,7 @@ HTML = """<!doctype html>
 
 {% if not authed %}
   <div class="login-card">
-    <div class="center"><img class="logo" src="{{ logo }}" alt="DEV-U PHOE KAUNT"></div>
+    <div class="center"><img class="logo" src="{{ logo }}" alt="SA THA KHA LAIN"></div>
     <h3 class="center">SA THA KHA LAIN</h3>
     <p class="center muted" style="margin-top:0">ZIVPN User Panel — Login</p>
     {% if err %}<div class="err">{{err}}</div>{% endif %}
