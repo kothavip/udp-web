@@ -1,6 +1,6 @@
 #!/bin/bash
 # ZIVPN UDP Server + Web UI (Myanmar)
-# Author mix: Zahid Islam (udp-zivpn) + UPK tweaks + THA KHA LAIN UI polish
+# Author mix: Zahid Islam (udp-zivpn) + STKL-Zi tweaks + STKL-Zi polish
 # Features: apt-guard, binary fetch fallback, UFW rules, DNAT+MASQ, sysctl forward,
 #           Flask 1.x-compatible Web UI (auto-refresh 120s), users.json <-> config.json mirror sync,
 #           per-user Online/Offline via conntrack, expires accepts "YYYY-MM-DD" OR days "30",
@@ -15,7 +15,7 @@ B="\e[1;34m"; G="\e[1;32m"; Y="\e[1;33m"; R="\e[1;31m"; C="\e[1;36m"; M="\e[1;35
 LINE="${B}────────────────────────────────────────────────────────${Z}"
 say(){ echo -e "$1"; }
 
-echo -e "\n$LINE\n${G}🌟 ZIVPN UDP Server + Web UI ကို THA KHA LAIN မှ ရေးသားထားသည်${Z}\n$LINE"
+echo -e "\n$LINE\n${G}🌟 STKL-Zi မှ ရေးသားထားသည်${Z}\n$LINE"
 
 # ===== Root check =====
 if [ "$(id -u)" -ne 0 ]; then
@@ -23,53 +23,6 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 export DEBIAN_FRONTEND=noninteractive
-
-# =====================================================================
-#                   ONE-TIME KEY GATE (MANDATORY)
-# =====================================================================
-# API server ကို script ထဲမှာပဲ သတ်မှတ်ထားသည်
-KEY_API_URL="http://45.91.135.76:8088"   # <- မိမိ API URL ဖြစ်အောင် ပြင်နိုင်
-
-consume_one_time_key() {
-  local _key="$1"
-  local _url="${KEY_API_URL%/}/api/consume"
-  if ! command -v curl >/dev/null 2>&1; then
-    echo -e "${R}❌ curl မရှိပါ — apt-get install -y curl နဲ့အရင်တင်ပါ${Z}"
-    exit 2
-  fi
-  echo -e "${Y}🔑 One-time key ကိုစစ်နေပါတယ်...${Z}"
-  local resp
-  resp=$(curl -fsS -X POST "$_url" \
-           -H 'Content-Type: application/json' \
-           -d "{\"key\":\"${_key}\"}" 2>&1) || {
-    echo -e "${R}❌ Key server ချိတ်ဆက်မရ:${Z} $resp"
-    exit 2
-  }
-  if echo "$resp" | grep -q '"ok":\s*true'; then
-    echo -e "${G}✅ Key မှန်တယ် (consumed) — Installation ဆက်လုပ်မယ်${Z}"
-    return 0
-  else
-    echo -e "${R}❌ Key မမှန်/ပြီးသုံးပြီး:${Z} $resp"
-    return 1
-  fi
-}
-
-# ===== Prompt for one-time key (MANDATORY) =====
-while :; do
-  echo -ne "${C}Enter one-time key: ${Z}"
-  read -r -s ONE_TIME_KEY
-  echo
-  if [ -z "${ONE_TIME_KEY:-}" ]; then
-    echo -e "${Y}⚠️ key မထည့်ရသေးပါ — ထပ်ထည့်ပါ${Z}"
-    continue
-  fi
-  if consume_one_time_key "$ONE_TIME_KEY"; then
-    break
-  else
-    echo -e "${Y}🔁 ထပ်ထည့်ပါ (UI မှ key အသစ်ထုတ်လို့ရတယ်)${Z}"
-  fi
-done
-# =====================================================================
 
 # ===== apt guards =====
 wait_for_apt() {
@@ -168,7 +121,7 @@ else
 fi
 
 # ===== Ask initial VPN passwords =====
-say "${G}🔏 VPN Password List (ကော်မာဖြင့်ခွဲ) eg: upkvip,alice,pass1${Z}"
+say "${G}စောင့်နေရတာ{Z}"
 read -r -p "Passwords (Enter=zi): " input_pw
 if [ -ဇ "${input_pw:-}" ]; then PW_LIST='["zi"]'; else
   PW_LIST=$(echo "$input_pw" | awk -F',' '{
@@ -192,7 +145,7 @@ fi
 chmod 644 "$CFG" "$USERS"
 
 # ===== systemd: ZIVPN =====
-say "${Y}🧰 systemd service (zivpn) ကို သွင်းနေပါတယ်...${Z}"
+say "${Y}အစRunပြီး..${Z}"
 cat >/etc/systemd/system/zivpn.service <<'EOF'
 [Unit]
 Description=ZIVPN UDP Server
@@ -215,7 +168,7 @@ WantedBy=multi-user.target
 EOF
 
 # ===== Web Panel (Flask 1.x compatible, refresh 120s + Login UI) =====
-say "${Y}🖥️ Web Panel (Flask) ကို ထည့်နေပါတယ်...${Z}"
+say "${Y}ဖိုင်း ကို ထည့်နေပါတယ်...${Z}"
 cat >/etc/zivpn/web.py <<'PY'
 from flask import Flask, jsonify, render_template_string, request, redirect, url_for, session, make_response
 import json, re, subprocess, os, tempfile, hmac
@@ -230,118 +183,140 @@ LOGO_URL = "https://raw.githubusercontent.com/kothavip/udp-web/refs/heads/main/1
 
 HTML = """<!doctype html>
 <html lang="my"><head><meta charset="utf-8">
-<title>ZIVPN User Panel</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="refresh" content="120">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
  :root{
-  --bg:#ffffff; --fg:#111; --muted:#666; --card:#fafafa; --bd:#e5e5e5;
-  --ok:#0a8a0a; --bad:#c0392b; --unk:#666; --btn:#fff; --btnbd:#ccc;
-  --pill:#f5f5f5; --pill-bad:#ffecec; --pill-ok:#eaffe6; --pill-unk:#f0f0f0;
+  --bg:#f0f2f5; --fg:#1e293b; --primary:#2563eb; --ok:#10b981; --warn:#f59e0b; --bad:#ef4444; --card:#ffffff; --bd:#e2e8f0; --muted:#64748b;
  }
- html,body{background:var(--bg);color:var(--fg)}
- body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:24px}
- header{display:flex;align-items:center;gap:14px;margin-bottom:16px}
- h1{margin:0;font-size:1.8em;font-weight:600;line-height:1.2}
- .sub{color:var(--muted);font-size:.95em}
- .btn{
-   padding:8px 14px;border-radius:999px;border:1px solid var(--btnbd);
-   background:var(--btn);color:var(--fg);text-decoration:none;white-space:nowrap;cursor:pointer
- }
- table{border-collapse:collapse;width:100%;max-width:980px}
- th,td{border:1px solid var(--bd);padding:10px;text-align:left}
- th{background:var(--card)}
- .ok{color:var(--ok);background:var(--pill-ok)}
- .bad{color:var(--bad);background:var(--pill-bad)}
- .unk{color:var(--unk);background:var(--pill-unk)}
- .pill{display:inline-block;padding:4px 10px;border-radius:999px}
- form.box{margin:18px 0;padding:12px;border:1px solid var(--bd);border-radius:12px;background:var(--card);max-width:980px}
- label{display:block;margin:6px 0 2px}
- input{width:100%;max-width:420px;padding:9px 12px;border:1px solid var(--bd);border-radius:10px}
- .row{display:flex;gap:18px;flex-wrap:wrap}
- .row>div{flex:1 1 220px}
- .msg{margin:10px 0;color:var(--ok)}
- .err{margin:10px 0;color:var(--bad)}
- .muted{color:var(--muted)}
- .delform{display:inline}
- tr.expired td{opacity:.9; text-decoration-color: var(--bad);}
- .center{display:flex;align-items:center;justify-content:center}
- .login-card{max-width:420px;margin:70px auto;padding:24px;border:1px solid var(--bd);border-radius:14px;background:var(--card)}
- .login-card h3{margin:10px 0 6px}
- .logo{height:64px;width:auto;border-radius:14px;box-shadow:0 2px 6px rgba(0,0,0,0.15)}
+ *{box-sizing: border-box; font-family: 'Segoe UI', sans-serif; transition: all 0.2s ease;}
+ body{ background:var(--bg); color:var(--fg); margin:0; padding:15px; display:flex; flex-direction:column; align-items:center; min-height:100vh; }
+ 
+ /* Header & Navigation */
+ header{ width:100%; max-width:400px; text-align:center; margin-bottom:15px; }
+ .brand img{ width:70px; height:70px; border-radius:22px; border:3px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom:10px; }
+ .brand h1{ font-size:1.5em; margin:0; font-weight:900; color:var(--primary); text-transform:uppercase; letter-spacing:1px; }
+ .nav-links{ display:flex; gap:12px; justify-content:center; margin-bottom: 20px; }
+ .nav-links a{ text-decoration:none; font-size:11px; font-weight:700; padding:10px 18px; border-radius:12px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); color: var(--fg); border: 1px solid var(--bd); }
+
+ /* Login Screen */
+ .login-card{ margin-top:50px; background:#fff; padding:35px; border-radius:30px; width:100%; max-width:360px; text-align:center; box-shadow:0 20px 40px rgba(0,0,0,0.1); }
+
+ /* Forms */
+ form.box{ background:var(--card); border-radius:25px; padding:22px; width:100%; max-width:400px; margin-bottom:20px; box-shadow:0 10px 25px rgba(0,0,0,0.05); }
+ .input-grp{ position:relative; margin-bottom: 15px; text-align: left; }
+ .input-grp i{ position:absolute; left:12px; top:38px; color:var(--primary); font-size:14px; }
+ label{ display:block; font-size:11px; color:var(--muted); margin-bottom:5px; font-weight:800; text-transform:uppercase; }
+ input{ width:100%; padding:12px 12px 12px 38px; border:2px solid var(--bd); border-radius:12px; font-size:14px; background:#f8fafc; }
+ .btn-primary{ background:var(--primary); color:#fff; border:none; width:100%; padding:15px; border-radius:15px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; }
+
+ /* Indicator Table */
+ .table-container{ width:100%; max-width:400px; }
+ table{ width:100%; border-collapse:separate; border-spacing: 0 10px; }
+ td{ background:var(--card); padding:15px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); position:relative; overflow:hidden; }
+ td:first-child{ border-radius:18px 0 0 18px; text-align:left; padding-left:20px; }
+ td:last-child{ border-radius:0 18px 18px 0; text-align:center; }
+ 
+ .status-bar{ position:absolute; left:0; top:0; bottom:0; width:6px; }
+ .bar-green{ background: var(--ok); } .bar-yellow{ background: var(--warn); } .bar-red{ background: var(--bad); }
+
+ /* Receipt Design */
+ #receipt{ position: fixed; left: -9999px; width: 350px; background: #fff; padding: 35px; border-radius: 25px; text-align: center; }
+ .r-title{ color: var(--primary); font-size: 28px; font-weight: 900; border-bottom: 3px dashed var(--bd); padding-bottom: 15px; margin-bottom: 20px; }
+ .r-row{ display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px; font-weight: 600; color: #334155; }
+ .r-foot{ margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; color: var(--ok); font-weight: 800; }
+
+ .action-group{ display:flex; gap:10px; justify-content:center; }
+ .act-btn{ width:42px; height:42px; border-radius:12px; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; }
+ .btn-cal{ background:#dbeafe; color:var(--primary); } .btn-del{ background:#fee2e2; color:var(--bad); }
+ .input-cal{ position:absolute; opacity:0; width:100%; height:100%; cursor:pointer; top:0; left:0; }
 </style></head><body>
 
 {% if not authed %}
   <div class="login-card">
-    <div class="center"><img class="logo" src="{{ logo }}" alt="THA KHA LAIN"></div>
-    <h3 class="center">THA KHA LAIN</h3>
-    <p class="center muted" style="margin-top:0">ZIVPN User Panel — Login</p>
-    {% if err %}<div class="err">{{err}}</div>{% endif %}
+    <img src="{{ logo }}" style="width:85px; height:85px; border-radius:22px; margin-bottom:15px;">
+    <h2 style="margin-bottom:25px;">STKL- ADMIN LOGIN</h2>
     <form method="post" action="/login">
-      <label>Username</label>
-      <input name="u" autofocus required>
-      <label style="margin-top:8px">Password</label>
-      <input name="p" type="password" required>
-      <button class="btn" type="submit" style="margin-top:12px;width:100%">Login</button>
+        <div class="input-grp"><label>Username</label><i class="fa-solid fa-user-shield"></i><input name="u" required autofocus></div>
+        <div class="input-grp"><label>Password</label><i class="fa-solid fa-lock"></i><input name="p" type="password" required></div>
+        <button class="btn-primary">အကောင့်ဝင်ရန် <i class="fa-solid fa-right-to-bracket"></i></button>
     </form>
   </div>
 {% else %}
+  <header>
+    <div class="brand"><img src="{{ logo }}"><h1>STKL-ZiPANEL</h1></div>
+    <div class="nav-links">
+      <a href="https://m.me/kotha.sattahip" target="_blank" style="color:#0084ff;"><i class="fa-brands fa-facebook-messenger"></i> SUPPORT</a>
+      <a href="/logout" style="color:var(--bad);"><i class="fa-solid fa-power-off"></i> LOGOUT</a>
+    </div>
+  </header>
 
-<header>
-  <img src="{{ logo }}" alt="THA KHA LAIN"
-       style="height:56px;width:auto;display:block;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,0.15)">
-  <div style="flex:1 1 auto">
-    <h1>THA KHA LAIN</h1>
-    <div class="sub">ZIVPN User Panel</div>
-  </div>
-  <div style="display:flex;gap:8px;align-items:center">
-    <a class="btn" href="https://www.mediafire.com/file/bxx8qnlgjw7j6u4/ZIVPN_V_2.0.3_Mod_by_JORYYUI68.apk/file" target="_blank" rel="noopener">APPလင့်</a>
-    <a class="btn" href="/logout">Logout</a>
-  </div>
-</header>
+  <form method="post" action="/add" id="userForm" class="box">
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+      <div class="input-grp"><label>နာမည်</label><i class="fa-solid fa-user-plus"></i><input id="inUser" name="user" required></div>
+      <div class="input-grp"><label>စကားဝှက်</label><i class="fa-solid fa-key"></i><input id="inPass" name="password" required></div>
+    </div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+      <div class="input-grp"><label>ရက်ပေါင်း</label><i class="fa-solid fa-calendar-day"></i><input id="inDays" name="expires" placeholder="30"></div>
+      <div class="input-grp"><label>UDP PORT</label><i class="fa-solid fa-bolt"></i><input name="port" placeholder="Auto"></div>
+    </div>
+    <button type="button" onclick="handleSave()" class="btn-primary">SAVE & SYNC DATA <i class="fa-solid fa-file-invoice"></i></button>
+  </form>
 
-<form method="post" action="/add" class="box">
-  <h3>➕ အသုံးပြုသူ အသစ်ထည့်ရန်</h3>
-  {% if msg %}<div class="msg">{{msg}}</div>{% endif %}
-  {% if err %}<div class="err">{{err}}</div>{% endif %}
-  <div class="row">
-    <div><label>👤 User</label><input name="user" required></div>
-    <div><label>🔑 Password</label><input name="password" required></div>
+  <div id="receipt">
+      <div class="r-title">STKL-Zi</div>
+      <div class="r-row"><span>နာမည်:</span> <span id="rUser"></span></div>
+      <div class="r-row"><span>စကားဝှက်:</span> <span id="rPass"></span></div>
+      <div class="r-row"><span>ကုန်ရက်:</span> <span id="rDate"></span></div>
+      <div class="r-foot">ကျေးဇူးတင်ပါသည်</div>
   </div>
-  <div class="row">
-    <div><label>⏰ Expires (ထည့်သွင်းလိုသည့်ရက်)</label><input name="expires" placeholder="2025-12-31 or 30"></div>
-    <div><label>🔌 UDP Port (6000–19999)</label><input name="port" placeholder="auto"></div>
+
+  <div class="table-container">
+    <table>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>
+            {% set d = u.days_left | default(0) | int %}
+            <div class="status-bar {% if d > 10 %}bar-green{% elif d > 3 %}bar-yellow{% else %}bar-red{% endif %}"></div>
+            <strong>{{u.user}}</strong><br>
+            <small style="color:var(--muted); font-weight:600;"><i class="fa-solid fa-clock"></i> {{u.expires}} ({{d}}d left)</small>
+          </td>
+          <td>
+            <div class="action-group">
+              <form method="post" action="/delete" onsubmit="return confirm('ဖျက်မှာသေချာလား?')" style="margin:0;">
+                  <input type="hidden" name="user" value="{{u.user}}"><button type="submit" class="act-btn btn-del"><i class="fa-solid fa-trash-can"></i></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
-  <button class="btn" type="submit">Save + Sync</button>
-</form>
 
-<table>
-  <tr>
-    <th>👤 User</th><th>🔑 Password</th><th>⏰ Expires</th>
-    <th>🔌 Port</th><th>🔎 Status</th><th>🗑️ Delete</th>
-  </tr>
-  {% for u in users %}
-  <tr class="{% if u.expires and u.expires < today %}expired{% endif %}">
-    <td class="usercell">{{u.user}}</td>
-    <td>{{u.password}}</td>
-    <td>{% if u.expires %}{{u.expires}}{% else %}<span class="muted">—</span>{% endif %}</td>
-    <td>{% if u.port %}{{u.port}}{% else %}<span class="muted">—</span>{% endif %}</td>
-    <td>
-      {% if u.status == "Online" %}<span class="pill ok">Online</span>
-      {% elif u.status == "Offline" %}<span class="pill bad">Offline</span>
-      {% else %}<span class="pill unk">Unknown</span>
-      {% endif %}
-    </td>
-    <td>
-      <form class="delform" method="post" action="/delete" onsubmit="return confirm('ဖျက်မလား?')">
-        <input type="hidden" name="user" value="{{u.user}}">
-        <button type="submit" class="btn" style="border-color:transparent;background:#ffecec">Delete</button>
-      </form>
-    </td>
-  </tr>
-  {% endfor %}
-</table>
+  <script>
+  function handleSave() {
+      const user = document.getElementById('inUser').value;
+      const pass = document.getElementById('inPass').value;
+      const days = document.getElementById('inDays').value || "30";
+      if(!user || !pass) { alert("အချက်အလက်ဖြည့်ပါ"); return; }
 
+      document.getElementById('rUser').innerText = user;
+      document.getElementById('rPass').innerText = pass;
+      const d = new Date(); d.setDate(d.getDate() + parseInt(days));
+      document.getElementById('rDate').innerText = d.toISOString().split('T')[0];
+
+      html2canvas(document.getElementById('receipt'), {scale: 2}).then(canvas => {
+          const link = document.createElement('a');
+          link.download = 'STKL-Zi' + user + '.png';
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+          setTimeout(() => { document.getElementById('userForm').submit(); }, 500);
+      });
+  }
+  </script>
 {% endif %}
 </body></html>"""
 
@@ -584,7 +559,7 @@ def favicon(): return ("",204)
 def handle_405(e): return redirect(url_for('index'))
 
 if __name__ == "__main__":
-  app.run(host="0.0.0.0", port=8080)
+  app.run(host="0.0.0.0", port=8880)
 PY
 
 # ===== Web systemd =====
@@ -607,7 +582,7 @@ WantedBy=multi-user.target
 EOF
 
 # ===== Networking: forwarding + DNAT + MASQ + UFW =====
-echo -e "${Y}🌐 UDP/DNAT + UFW + sysctl အပြည့်ချထားနေပါတယ်...${Z}"
+echo -e "${Y}စောင့်ပိုတွေ...${Z}"
 sysctl -w net.ipv4.ip_forward=1 >/dev/null
 grep -q '^net.ipv4.ip_forward=1' /etc/sysctl.conf || echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf
 
@@ -622,7 +597,7 @@ iptables -t nat -A POSTROUTING -o "$IFACE" -j MASQUERADE
 
 ufw allow 5667/udp >/dev/null 2>&1 || true
 ufw allow 6000:19999/udp >/dev/null 2>&1 || true
-ufw allow 8080/tcp >/dev/null 2>&1 || true
+ufw allow 8880/tcp >/dev/null 2>&1 || true
 ufw reload >/dev/null 2>&1 || true
 
 # ===== CRLF sanitize =====
@@ -634,12 +609,12 @@ systemctl enable --now zivpn.service
 systemctl enable --now zivpn-web.service
 
 IP=$(hostname -I | awk '{print $1}')
-echo -e "\n$LINE\n${G}✅ Done${Z}"
-echo -e "${C}Web Panel   :${Z} ${Y}http://$IP:8080${Z}"
+echo -e "\n$LINE\n${G}🕳💣💣💣${Z}"
+echo -e "${C}Web Panel   :${Z} ${Y}http://$IP:8880${Z}"
 echo -e "${C}users.json  :${Z} ${Y}/etc/zivpn/users.json${Z}"
 echo -e "${C}config.json :${Z} ${Y}/etc/zivpn/config.json${Z}"
 echo -e "${C}Services    :${Z} ${Y}systemctl status|restart zivpn  •  systemctl status|restart zivpn-web${Z}"
-echo -ે "$LINE"  say "${Y}🔐 SSL စိတျဖိုင်တွေ ဖန်တီးနေပါတယ်...${Z}"
+echo -ે "$LINE"  say "${Y}အသုံးပြုနိုင်ပြီး မသာလေး...${Z}"
   openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 \
     -subj "/C=MM/ST=Yangon/L=Yangon/O=UPK/OU=Net/CN=zivpn" \
     -keyout "/etc/zivpn/zivpn.key" -out "/etc/zivpn/zivpn.crt" >/dev/null 2>&1
@@ -669,7 +644,7 @@ else
 fi
 
 # ===== Ask initial VPN passwords =====
-say "${G}🔏 VPN Password List (ကော်မာဖြင့်ခွဲ) eg: upkvip,alice,pass1${Z}"
+say "${G}🔏 STKL-Zi{Z}"
 read -r -p "Passwords (Enter=zi): " input_pw
 if [ -z "${input_pw:-}" ]; then PW_LIST='["zi"]'; else
   PW_LIST=$(echo "$input_pw" | awk -F',' '{
@@ -693,7 +668,7 @@ fi
 chmod 644 "$CFG" "$USERS"
 
 # ===== systemd: ZIVPN =====
-say "${Y}🧰 systemd service (zivpn) ကို သွင်းနေပါတယ်...${Z}"
+say "${Y}🖕🏻🖕🏻🖕🏻 ခဏစောင့်ဦးဘဲကြီး(zivpn) ကို သွင်းနေပါတယ်...${Z}"
 cat >/etc/systemd/system/zivpn.service <<'EOF'
 [Unit]
 Description=ZIVPN UDP Server
@@ -716,7 +691,7 @@ WantedBy=multi-user.target
 EOF
 
 # ===== Web Panel (Flask 1.x compatible, refresh 120s + Login UI) =====
-say "${Y}🖥️ Web Panel (Flask) ကို ထည့်နေပါတယ်...${Z}"
+say "${Y}🤡🤡🤡 ရတော့မယ်...${Z}"
 cat >/etc/zivpn/web.py <<'PY'
 from flask import Flask, jsonify, render_template_string, request, redirect, url_for, session, make_response
 import json, re, subprocess, os, tempfile, hmac
@@ -729,9 +704,9 @@ RECENT_SECONDS = 120
 
 LOGO_URL = "https://raw.githubusercontent.com/kothavip/udp-web/refs/heads/main/1760280233681.jpg"
 
+
 HTML = """<!doctype html>
 <html lang="my"><head><meta charset="utf-8">
-<title>ZIVPN User Panel</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="refresh" content="120">
 <style>
@@ -740,111 +715,271 @@ HTML = """<!doctype html>
   --ok:#0a8a0a; --bad:#c0392b; --unk:#666; --btn:#fff; --btnbd:#ccc;
   --pill:#f5f5f5; --pill-bad:#ffecec; --pill-ok:#eaffe6; --pill-unk:#f0f0f0;
  }
- html,body{background:var(--bg);color:var(--fg)}
- body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:24px}
- header{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+ html,body{background:var(--bg);color:var(--fg); min-height: 100vh;}
+ body{
+   font-family:system-ui,Segoe UI,Roboto,Arial;
+   margin:0; 
+   display:flex; 
+   flex-direction:column; 
+   align-items:center; 
+   padding:24px;
+   box-sizing: border-box;
+ }
+ header{display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:24px;text-align:center}
  h1{margin:0;font-size:1.8em;font-weight:600;line-height:1.2}
  .sub{color:var(--muted);font-size:.95em}
  .btn{
    padding:8px 14px;border-radius:999px;border:1px solid var(--btnbd);
-   background:var(--btn);color:var(--fg);text-decoration:none;white-space:nowrap;cursor:pointer
+   background:var(--btn);color:var(--fg);text-decoration:none;white-space:nowrap;cursor:pointer;
+   display: inline-block;
  }
- table{border-collapse:collapse;width:100%;max-width:980px}
- th,td{border:1px solid var(--bd);padding:10px;text-align:left}
+ table{border-collapse:collapse;width:100%;max-width:400px;margin: 0 auto}
+ th,td{border:1px solid var(--bd);padding:10px;text-align:center} /* စာသားတွေကိုပါ အလယ်ပို့ထားပါတယ် */
  th{background:var(--card)}
  .ok{color:var(--ok);background:var(--pill-ok)}
  .bad{color:var(--bad);background:var(--pill-bad)}
  .unk{color:var(--unk);background:var(--pill-unk)}
  .pill{display:inline-block;padding:4px 10px;border-radius:999px}
- form.box{margin:18px 0;padding:12px;border:1px solid var(--bd);border-radius:12px;background:var(--card);max-width:980px}
+ form.box{margin:18px auto;padding:24px;border:1px solid var(--bd);border-radius:12px;background:var(--card);max-width:480px;width:100%;text-align:left}
  label{display:block;margin:6px 0 2px}
- input{width:100%;max-width:420px;padding:9px 12px;border:1px solid var(--bd);border-radius:10px}
- .row{display:flex;gap:18px;flex-wrap:wrap}
+ input{width:100%;padding:9px 12px;border:1px solid var(--bd);border-radius:10px;box-sizing:border-box}
+ .row{display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
  .row>div{flex:1 1 220px}
- .msg{margin:10px 0;color:var(--ok)}
- .err{margin:10px 0;color:var(--bad)}
+ .msg{margin:10px 0;color:var(--ok);text-align:center}
+ .err{margin:10px 0;color:var(--bad);text-align:center}
  .muted{color:var(--muted)}
  .delform{display:inline}
  tr.expired td{opacity:.9; text-decoration-color: var(--bad);}
- .center{display:flex;align-items:center;justify-content:center}
- .login-card{max-width:420px;margin:70px auto;padding:24px;border:1px solid var(--bd);border-radius:14px;background:var(--card)}
+ .center{display:flex;align-items:center;justify-content:center;text-align:center}
+ .login-card{max-width:420px;width:100%;margin:auto;padding:24px;border:1px solid var(--bd);border-radius:14px;background:var(--card)}
  .login-card h3{margin:10px 0 6px}
  .logo{height:64px;width:auto;border-radius:14px;box-shadow:0 2px 6px rgba(0,0,0,0.15)}
 </style></head><body>
 
 {% if not authed %}
   <div class="login-card">
-    <div class="center"><img class="logo" src="{{ logo }}" alt="SA THA KHA LAIN"></div>
-    <h3 class="center">SA THA KHA LAIN</h3>
-    <p class="center muted" style="margin-top:0">ZIVPN User Panel — Login</p>
+    <div class="center"><img class="logo" src="{{ logo }}" alt="STKL-Zi"></div>
+    <h3 class="center">STKL-Zi</h3>
     {% if err %}<div class="err">{{err}}</div>{% endif %}
     <form method="post" action="/login">
       <label>Username</label>
       <input name="u" autofocus required>
       <label style="margin-top:8px">Password</label>
       <input name="p" type="password" required>
-      <button class="btn" type="submit" style="margin-top:12px;width:100%">Login</button>
+      <button class="btn" type="submit" style="margin-top:20px;width:100%; background:#111; color:#fff">Login</button>
     </form>
   </div>
 {% else %}
-
 <header>
-  <img src="{{ logo }}" alt="SA THA KHA LAIN"
-       style="height:56px;width:auto;display:block;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,0.15)">
-  <div style="flex:1 1 auto">
-    <h1>SA THA KHA LAIN</h1>
-    <div class="sub">ZIVPN User Panel</div>
+  <div class="logo-container">
+    <img src="{{ logo }}" alt="STKL-Zi" style="width: 80px; height: 80px; border-radius: 50%; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
   </div>
-  <div style="display:flex;gap:8px;align-items:center">
-    <a class="btn" href="https://www.mediafire.com/file/bxx8qnlgjw7j6u4/ZIVPN_V_2.0.3_Mod_by_JORYYUI68.apk/file" target="_blank" rel="noopener">Apk လင့်ခ် </a>
+  <div>
+    <h1>STKL-Zi</h1>
+  </div>
+  <div style="width: 100%; max-width: 90px;">
+    <a class="btn" href="https://m.me/kotha.sattahip" target="_blank" rel="noopener" 
+       style="display: block; background: #0084ff; color: white; border: none; padding: 12px; font-weight: bold; text-decoration: none; border-radius: 8px;">
+      💬 Contact (Messenger)
+    </a>
     <a class="btn" href="/logout">Logout</a>
   </div>
 </header>
 
 <form method="post" action="/add" class="box">
-  <h3>➕ အသုံးပြုသူ အသစ်ထည့်ရန်</h3>
-  {% if msg %}<div class="msg">{{msg}}</div>{% endif %}
-  {% if err %}<div class="err">{{err}}</div>{% endif %}
-  <div class="row">
-    <div><label>👤 User</label><input name="user" required></div>
-    <div><label>🔑 Password</label><input name="password" required></div>
-  </div>
-  <div class="row">
-    <div><label>⏰ Expires (ထည့်သွင်းလိုသည့်ရက်)</label><input name="expires" placeholder="2025-12-31 or 30"></div>
-    <div><label>🔌 UDP Port (6000–19999)</label><input name="port" placeholder="auto"></div>
-  </div>
-  <button class="btn" type="submit">Save + Sync</button>
-</form>
+HTML = """<!doctype html>
+<html lang="my"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<style>
+ :root{
+  --bg:#f8fafc; --fg:#0f172a; --muted:#64748b; --card:#ffffff; --bd:#e2e8f0;
+  --primary:#2563eb; --ok:#10b981; --bad:#ef4444; --warn:#f59e0b;
+ }
+ *{box-sizing: border-box; font-family: system-ui, sans-serif;}
+ body{ background:var(--bg); color:var(--fg); margin:0; padding:10px; display:flex; flex-direction:column; align-items:center; }
+ 
+ /* Header Centralized */
+ header{ width:100%; max-width:400px; text-align:center; margin-bottom:15px; }
+ .brand img{ width:55px; height:55px; border-radius:12px; margin-bottom:5px; }
+ .brand h1{ font-size:1.2em; margin:0; font-weight:800; color:var(--primary); text-transform:uppercase; }
 
-<table>
-  <tr>
-    <th>👤 User</th><th>🔑 Password</th><th>⏰ Expires</th>
-    <th>🔌 Port</th><th>🔎 Status</th><th>🗑️ Delete</th>
-  </tr>
-  {% for u in users %}
-  <tr class="{% if u.expires and u.expires < today %}expired{% endif %}">
-    <td class="usercell">{{u.user}}</td>
-    <td>{{u.password}}</td>
-    <td>{% if u.expires %}{{u.expires}}{% else %}<span class="muted">—</span>{% endif %}</td>
-    <td>{% if u.port %}{{u.port}}{% else %}<span class="muted">—</span>{% endif %}</td>
-    <td>
-      {% if u.status == "Online" %}<span class="pill ok">Online</span>
-      {% elif u.status == "Offline" %}<span class="pill bad">Offline</span>
-      {% else %}<span class="pill unk">Unknown</span>
-      {% endif %}
-    </td>
-    <td>
-      <form class="delform" method="post" action="/delete" onsubmit="return confirm('ဖျက်မလား?')">
-        <input type="hidden" name="user" value="{{u.user}}">
-        <button type="submit" class="btn" style="border-color:transparent;background:#ffecec">Delete</button>
-      </form>
-    </td>
-  </tr>
-  {% endfor %}
-</table>
+ /* Box Input */
+ form.box{ background:var(--card); border:1px solid var(--bd); border-radius:12px; padding:15px; width:100%; max-width:400px; margin-bottom:15px; box-shadow:0 2px 4px rgba(0,0,0,0.05); }
+ .row{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px; }
+ label{ display:block; font-size:10px; color:var(--muted); margin-bottom:3px; font-weight:700; text-align:left; }
+ input{ width:100%; padding:8px; border:1px solid var(--bd); border-radius:6px; font-size:14px; background:#fcfcfc; }
+ .btn-p{ background:var(--primary); color:#fff; border:none; width:100%; padding:10px; border-radius:8px; font-weight:700; cursor:pointer; margin-top:5px; }
 
+ /* Compact Table */
+ .table-container{ width:100%; max-width:400px; }
+HTML = """<!doctype html>
+<html lang="my"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+ :root{
+  --bg:#f0f2f5; --fg:#1e293b; --primary:#2563eb; --ok:#10b981; --warn:#f59e0b; --bad:#ef4444; --card:#ffffff; --bd:#e2e8f0; --muted:#64748b;
+ }
+ *{box-sizing: border-box; font-family: 'Segoe UI', sans-serif; transition: all 0.2s ease;}
+ body{ background:var(--bg); color:var(--fg); margin:0; padding:15px; display:flex; flex-direction:column; align-items:center; min-height:100vh; }
+ 
+ /* Header Section */
+ header{ width:100%; max-width:400px; text-align:center; margin-bottom:15px; }
+ .brand img{ width:70px; height:70px; border-radius:22px; border:3px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom:10px; }
+ .brand h1{ font-size:1.5em; margin:0; font-weight:900; color:var(--primary); text-transform:uppercase; letter-spacing:1px; }
+
+ /* Login UI */
+ .login-card{ margin-top:50px; background:#fff; padding:35px; border-radius:30px; width:100%; max-width:360px; text-align:center; box-shadow:0 20px 40px rgba(0,0,0,0.1); border: 1px solid var(--bd); }
+ .login-card h2{ margin:0 0 25px; font-weight:900; color:var(--fg); font-size: 1.3em; }
+
+ /* Shared Form Elements */
+ .input-grp{ position:relative; margin-bottom: 15px; text-align: left; }
+ .input-grp i{ position:absolute; left:12px; top:38px; color:var(--primary); font-size:14px; }
+ label{ display:block; font-size:11px; color:var(--muted); margin-bottom:5px; font-weight:800; text-transform:uppercase; padding-left: 5px; }
+ input{ width:100%; padding:12px 12px 12px 38px; border:2px solid var(--bd); border-radius:12px; font-size:14px; background:#f8fafc; width: 100%; }
+ input:focus{ border-color:var(--primary); background:#fff; outline:none; box-shadow: 0 0 0 4px var(--primary-light); }
+
+ .btn-primary{ background:var(--primary); color:#fff; border:none; width:100%; padding:15px; border-radius:15px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; font-size:14px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
+
+ /* Dashboard Items */
+ .nav-links{ display:flex; gap:12px; justify-content:center; margin: 10px 0 20px; }
+ .nav-links a{ text-decoration:none; font-size:11px; font-weight:700; padding:10px 18px; border-radius:12px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); color: var(--fg); border: 1px solid var(--bd); }
+
+ form.box{ background:var(--card); border-radius:25px; padding:22px; width:100%; max-width:400px; margin-bottom:20px; box-shadow:0 10px 25px rgba(0,0,0,0.05); }
+ .row{ display:grid; grid-template-columns: 1fr 1fr; gap:15px; }
+
+ /* Receipt Design */
+ #receipt{ position: fixed; left: -9999px; width: 350px; background: #fff; padding: 35px; border-radius: 25px; text-align: center; }
+ .r-title{ color: var(--primary); font-size: 28px; font-weight: 900; border-bottom: 3px dashed var(--bd); padding-bottom: 15px; margin-bottom: 20px; }
+ .r-row{ display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px; font-weight: 600; color: #334155; }
+ .r-foot{ margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; color: var(--ok); font-weight: 800; font-size: 16px; }
+
+ /* User Table */
+ .table-container{ width:100%; max-width:400px; }
+ table{ width:100%; border-collapse:separate; border-spacing: 0 10px; }
+ td{ background:var(--card); padding:15px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); position:relative; overflow:hidden; }
+ td:first-child{ border-radius:18px 0 0 18px; text-align:left; padding-left:20px; }
+ td:last-child{ border-radius:0 18px 18px 0; text-align:center; }
+ 
+ .status-bar{ position:absolute; left:0; top:0; bottom:0; width:6px; }
+ .bar-green{ background: var(--ok); } .bar-yellow{ background: var(--warn); } .bar-red{ background: var(--bad); }
+
+ .action-group{ display:flex; gap:10px; justify-content:center; }
+ .act-btn{ width:42px; height:42px; border-radius:12px; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; font-size: 18px; }
+ .btn-cal{ background:#dbeafe; color:var(--primary); } 
+ .btn-del{ background:#fee2e2; color:var(--bad); }
+ .input-cal{ position:absolute; opacity:0; width:100%; height:100%; cursor:pointer; }
+</style></head><body>
+
+{% if not authed %}
+  <div class="login-card">
+    <img src="{{ logo }}" style="width:85px; height:85px; border-radius:22px; margin-bottom:15px; border: 3px solid var(--primary-light);">
+    <h2>ADMIN ACCESS</h2>
+    <form method="post" action="/login">
+        <div class="input-grp">
+            <label>Username</label>
+            <i class="fa-solid fa-circle-user"></i>
+            <input name="u" placeholder="Admin Name" required autofocus>
+        </div>
+        <div class="input-grp">
+            <label>Password</label>
+            <i class="fa-solid fa-shield-halved"></i>
+            <input name="p" type="password" placeholder="••••••••" required>
+        </div>
+        <button class="btn-primary" style="margin-top:20px;">
+            SIGN IN <i class="fa-solid fa-arrow-right-to-bracket"></i>
+        </button>
+    </form>
+  </div>
+
+{% else %}
+  <header>
+    <div class="brand"><img src="{{ logo }}"><h1>STKL-Zi</h1></div>
+    <div class="nav-links">
+      <a href="https://m.me/kotha.sattahip" target="_blank" style="color:#0084ff;"><i class="fa-brands fa-facebook-messenger"></i> SUPPORT</a>
+      <a href="/logout" style="color:var(--bad);"><i class="fa-solid fa-power-off"></i> LOGOUT</a>
+    </div>
+  </header>
+
+  <form method="post" action="/add" id="userForm" class="box">
+    <div class="row">
+      <div class="input-grp"><label>နာမည်</label><i class="fa-solid fa-user-plus"></i><input id="inUser" name="user" required></div>
+      <div class="input-grp"><label>စကားဝှက်</label><i class="fa-solid fa-key"></i><input id="inPass" name="password" required></div>
+    </div>
+    <div class="row">
+      <div class="input-grp"><label>ရက်ပေါင်း</label><i class="fa-solid fa-calendar-day"></i><input id="inDays" name="expires" placeholder="30"></div>
+      <div class="input-grp"><label>UDP PORT</label><i class="fa-solid fa-bolt"></i><input name="port" placeholder="Auto"></div>
+    </div>
+    <button type="button" onclick="handleSave()" class="btn-primary">
+        SAVE & SYNC DATA <i class="fa-solid fa-file-invoice"></i>
+    </button>
+  </form>
+
+  <div id="receipt">
+      <div class="r-title">STKL-Zi</div>
+      <div class="r-row"><span>နာမည်:</span> <span id="rUser"></span></div>
+      <div class="r-row"><span>စကားဝှက်:</span> <span id="rPass"></span></div>
+      <div class="r-row"><span>ကုန်ရက်:</span> <span id="rDate"></span></div>
+      <div class="r-foot">ကျေးဇူးတင်ပါသည်</div>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>
+            {% set d = u.days_left | int %}
+            <div class="status-bar {% if d > 10 %}bar-green{% elif d > 3 %}bar-yellow{% else %}bar-red{% endif %}"></div>
+            <strong style="font-size:15px;">{{u.user}}</strong><br>
+            <small style="color:var(--muted); font-weight:600;"><i class="fa-solid fa-clock"></i> {{u.expires}} ({{d}}d left)</small>
+          </td>
+          <td>
+            <div class="action-group">
+              <form method="post" action="/add" style="margin:0;">
+                  <input type="hidden" name="user" value="{{u.user}}"><input type="hidden" name="mode" value="set">
+             <div class="act-btn btn-cal"><i class="fa-solid fa-calendar-check"></i>
+    <input type="date" name="expires" class="input-cal" onchange="this.form.submit()">
+</div>
+
+              </form>
+              <form method="post" action="/delete" onsubmit="return confirm('ဖျက်မှာ သေချာပါသလား?')" style="margin:0;"><input type="hidden" name="user" value="{{u.user}}">
+                  <button type="submit" class="act-btn btn-del"><i class="fa-solid fa-trash-can"></i></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+  function handleSave() {
+      const user = document.getElementById('inUser').value;
+      const pass = document.getElementById('inPass').value;
+      const days = document.getElementById('inDays').value || "30";
+      if(!user || !pass) { alert("အချက်အလက်ပြည့်စုံစွာဖြည့်ပါ"); return; }
+
+      document.getElementById('rUser').innerText = user;
+      document.getElementById('rPass').innerText = pass;
+      const d = new Date(); d.setDate(d.getDate() + parseInt(days));
+      document.getElementById('rDate').innerText = d.toISOString().split('T')[0];
+
+      html2canvas(document.getElementById('receipt'), {scale: 2}).then(canvas => {
+          const link = document.createElement('a');
+          link.download = 'STKL-Zi_' + user + '.png';
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+          document.getElementById('userForm').submit();
+      });
+  }
+  </script>
 {% endif %}
 </body></html>"""
+
+
 
 app = Flask(__name__)
 
@@ -1080,7 +1215,7 @@ def favicon(): return ("",204)
 def handle_405(e): return redirect(url_for('index'))
 
 if __name__ == "__main__":
-  app.run(host="0.0.0.0", port=8080)
+  app.run(host="0.0.0.0", port=8880)
 PY
 
 # ===== Web systemd =====
@@ -1103,7 +1238,7 @@ WantedBy=multi-user.target
 EOF
 
 # ===== Networking: forwarding + DNAT + MASQ + UFW =====
-echo -e "${Y}🌐 UDP/DNAT + UFW + sysctl အပြည့်ချထားနေပါတယ်...${Z}"
+echo -e "${Y}😁ရပါပြီနော်..ကိုကို😘😘😘...${Z}"
 sysctl -w net.ipv4.ip_forward=1 >/dev/null
 grep -q '^net.ipv4.ip_forward=1' /etc/sysctl.conf || echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf
 
@@ -1118,7 +1253,7 @@ iptables -t nat -A POSTROUTING -o "$IFACE" -j MASQUERADE
 
 ufw allow 5667/udp >/dev/null 2>&1 || true
 ufw allow 6000:19999/udp >/dev/null 2>&1 || true
-ufw allow 8080/tcp >/dev/null 2>&1 || true
+ufw allow 8880/tcp >/dev/null 2>&1 || true
 ufw reload >/dev/null 2>&1 || true
 
 # ===== CRLF sanitize =====
@@ -1130,9 +1265,9 @@ systemctl enable --now zivpn.service
 systemctl enable --now zivpn-web.service
 
 IP=$(hostname -I | awk '{print $1}')
-echo -e "\n$LINE\n${G}✅ Done${Z}"
-echo -e "${C}Web Panel   :${Z} ${Y}http://$IP:8080${Z}"
-echo -e "${C}users.json  :${Z} ${Y}/etc/zivpn/users.json${Z}"
-echo -e "${C}config.json :${Z} ${Y}/etc/zivpn/config.json${Z}"
-echo -e "${C}Services    :${Z} ${Y}systemctl status|restart zivpn  •  systemctl status|restart zivpn-web${Z}"
+echo -e "\n$LINE\n${G}VPS-IP-COPYလုပ်ပါ${Z}"
+echo -e "${C}ဘာကြည့်နေတာလဲ    :${Z} ${Y}http://$IP:8880${Z}"
+echo -e "${C}ရပါပြီဆို  :${Z} ${Y}/etc/zivpn/users.json${Z}"
+echo -e "${C}မယုံရင် :${Z} ${Y}/etc/zivpn/config.json${Z}"
+echo -e "${C}လော့အင်ကြည့်ကွာ    :${Z} ${Y}systemctl status|restart zivpn  •  systemctl status|restart zivpn-web${Z}"
 echo -e "$LINE"
