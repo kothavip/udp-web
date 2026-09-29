@@ -179,7 +179,7 @@ CONFIG_FILE = "/etc/zivpn/config.json"
 LISTEN_FALLBACK = "5667"
 RECENT_SECONDS = 120
 
-LOGO_URL = "https://raw.githubusercontent.com/kothavip/udp-web/refs/heads/main/1760280233681.jpg"
+LOGO_URL = "https://github.com/kothavip/udp-web/blob/main/orca-image--415718636.jpeg.jpeg"
 
 HTML = """<!doctype html>
 <html lang="my"><head><meta charset="utf-8">
